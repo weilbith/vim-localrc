@@ -20,7 +20,7 @@ function! localrc#find_configuration_files(base_path) abort
   " Traverse directories upwards until reach configured top.
   " Watch-out for local configurations files on each step.
   while l:directory =~ get(g:, 'localrc_top_dir', $HOME)
-    for l:file_name in get(g:, 'localrc_file_name_list', ['.vimrc', '.exrc'])
+    for l:file_name in get(g:, 'localrc_file_name_list', ['.vimrc', '.nvimrc', '.exrc'])
       let l:rc_file_candidate = globpath(l:directory, l:file_name)
 
       if filereadable(l:rc_file_candidate)
@@ -31,7 +31,9 @@ function! localrc#find_configuration_files(base_path) abort
     let l:directory = fnamemodify(l:directory, ':h')
   endwhile
 
-  return l:rc_file_list
+  " Reverse list, so configuration files close to the base can overwrite ones
+  " which take place higher in the directory structure.
+  return reverse(l:rc_file_list)
 endfunction
 
 function! localrc#calculate_file_hash(file) abort
@@ -52,7 +54,7 @@ endfunction
 
 function! localrc#get_cache_file() abort
   let l:xdg_cache_home = getenv('XDG_CACHE_HOME') ? $XDG_CACHE_HOME : $HOME . '/' . '.cache'
-  let l:chache_file = get(g:, 'localrc#cache_file', l:xdg_cache_home . '/vim-localrc/hashes')
+  let l:chache_file = get(g:, 'localrc_cache_file', l:xdg_cache_home . '/vim-localrc/hashes')
 
   if !filereadable(l:chache_file)
     echom 'Create new localrc cache file "' . l:chache_file .'"'
@@ -138,7 +140,7 @@ function! localrc#source_rc_file(file) abort
 endfunction
 
 function! localrc#is_rc_file(file) abort
-  for l:file_name in get(g:, 'localrc_file_name_list', ['.vimrc', '.exrc'])
+  for l:file_name in get(g:, 'localrc_file_name_list', ['.vimrc', '.nvimrc', '.exrc'])
     if fnamemodify(a:file, ':t') ==# l:file_name | return v:true | endif
   endfor
 
