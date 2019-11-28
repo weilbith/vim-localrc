@@ -1,0 +1,236 @@
+*localrc.txt*   Advanced loading of local runtime configurations
+
+Version:  0.1
+Author:   Thore Weilbier <thore@weilbier.net>
+License:  MIT
+
+==============================================================================
+						   *localrc_table_of_contents*
+TABLE OF CONTENTS~
+
+Introduction .......................................... |localrc_introduction|
+Usage ........................................................ |localrc_usage|
+Commands .................................................. |localrc_commands|
+Events ...................................................... |localrc_events|
+Variable ................................................. |localrc_variables|
+TODO-List ................................................ |localrc_todo_list|
+
+
+==============================================================================
+							*localrc_introduction*
+INTRODUCTION~
+
+This plugin attempts to solve the problem of local runtime configurations in
+the context of project repositories and similar use-cases. It is a more proper
+way of the built-in |exrc| feature (see also |secure|). In contrast to it,
+this plugin can load multiple runtime configurations on a path. This also
+allows to edit files of multiple projects, while the local configurations only
+apply to their subtree (require well written local configuration files, see
+|localrc_usage|). Moreover is the |exrc| option considered as not safe. This
+plugin attempts to solve that problem by letting the user (visually) confirm
+a local configuration. Confirmations by the user can be cached to avoid asking
+again for the exact same file (determined by hash values). If a file has been
+changed since the last confirmation, the user must verify the file again.
+
+
+==============================================================================
+							       *localrc_usage*
+USAGE~
+
+The application of local runtime configuration files with this plugin is
+simple. Per default they get applied automatically each time a new file is
+read (see |g:localrc_load_automatically|). As alternative or addition, you can
+manually call the |localrc_commands|. These are also useful to update the
+local runtime configurations even after a file has been already read.
+
+When this plugin attempts to source a local runtime configuration and it can
+not find a user confirmation for this version within its cache, it will open
+a user dialog to ask for confirmation. Such has the following options:
+
+	{Yes}	Accept the local runtime configuration, source it and remember
+		this confirmation by updating the cache for this file
+		(for this specific version).
+
+	{No}	Skips this configuration file and do not source it.  On the
+		next attempt to load this file (by |localrc_events| of other
+		files or manual |localrc_commands|), the user will get asked
+		again.
+
+	{Once}	Accept the local runtime configuration and source it. But in
+		contrast to {Yes} it will not remember this decision.
+
+	{Abort}	Cancel the whole process. This will not source the current
+		asked for configuration file, but also all following one which
+		have been found by this |localrc_events| or
+		|localrc_commands|.
+
+
+When writing local runtime configuration files, this plugin automatically
+store a confirmation of them in its cache. Therefore it uses the
+|g:localrc_file_name_list| to compare them with the currently open buffer
+which gets saved. If there is a match, the new hash value of the file is added
+automatically (see |g:localrc_confirm_automatically|). This avoids the need to
+confirm local runtime configurations you have written on your own. But if such
+a file gets manipulated by an external tool, a re-confirmation by the user is
+required.
+
+Writing a local runtime configuration should try to follow the style of
+|filetype-plugins| to avoid unexpected behavior. There is no need to set
+global options (instead use |setlocal|) as long as
+|g:localrc_load_automatically| is enabled. Thereby the configuration gets
+applied to all buffers which relate to a new opened file within the subtree of
+these local runtime configurations.
+The setting of plugin variables via local runtime configurations should happen
+with care. The best scenario is that the plugin supports buffer related
+variables to set (see |b:var|). If this options is not possible, it must be
+remembered that working on subtrees with different local runtime configuration
+does not work as maybe expected. The global options get applied for
+everything. This includes also files/buffers which intend to use the default
+runtime configuration. Similar for multiple subtrees with their own local
+runtime configurations. If they include global settings or variables, always
+the last opened file overrules (as long as no custom application happens). If
+you have a single configuration in the base directory of a project and work on
+these files exclusively, global options and variable work without problems.
+
+
+==============================================================================
+							    *localrc_commands*
+COMMANDS~
+
+|:LocalrcApplyFile|
+
+	This applies local runtime configuration along the path of the file
+	for the currently active buffer (`%`). So `expand('%:p')` is used as
+	base to start the search from. Local settings (`setlocal`) and buffer
+	mappings (|b:var|) will automatically affect the active buffer. This
+	is the same as for |g:localrc_load_automatically| just as a manual
+	call. This can be also used to update the local runtime
+	configurations, since the auto-command only applies on reading the
+	buffers related file (again).
+
+
+|:LocalrcApplyFor| {base}
+
+	Doing the same as |:LocalrcApplyFile|, just that the provided {base}
+	is used as starting point to search from for local runtime
+	configurations.  Remind that local settings or buffer mappings will
+	still automatically apply to the currently active buffer (could be
+	unexpected).
+	Example: `:LocalrcApplyFor getcwd()`
+
+	{base}	A relative or absolute path that gets interpreted as the first
+		folder from which on to search for local runtime configuration
+		files.  The search continues upwards in the directory
+		hierarchy until the |g:localrc_top_dir| has been reached. The
+		{base} must exist in the file-system or it will fail.
+
+
+==============================================================================
+							      *localrc_events*
+
+EVENTS~
+
+|BufReadPost|
+
+	This |autocmd-event| is used to automatically execute the
+	|:LocalrcApplyFile| command as far as |g:localrc_load_automatically|
+	is enabled.
+
+
+|BufWritePost|
+
+	This |autocmd-event| is used to automatically cache a confirmation of
+	the file that gets saved by the user if it matches any of the entries
+	in |g:localrc_file_name_list|.
+
+
+==============================================================================
+							   *localrc_variables*
+VARIABLES~
+
+|g:localrc_load_automatically|			    boolean (default `v:true`)
+
+	Enable the loading of local runtime configuration files via
+	auto-command (see |localrc_events|). Disable this option to load them
+	only manually (see |localrc_commands|) or use a custom automation
+	procedure.
+
+
+|g:localrc_confirm_automatically|		    boolean (default `v:true`)
+
+	When a buffer with a name as configured by |g:localrc_file_name_list|
+	gets written and this option is enabled, the file and the latest
+	version gets confirmed automatically by updating the cache. Such
+	configuration files are viewed and potentially written by the user
+	himself, so they must not be manually confirmed on their next
+	application. Disabling this option will ask for a manual confirmation
+	by the user the next time this local runtime configuration is
+	attempted to be sourced.
+
+
+|g:localrc_top_dir|				      string (default `$HOME`)
+
+	Path as most top level directory until which to search for local
+	runtime configuration files. The plugin will traverse the directory
+	structure upwards until it reach this directory. On each of these
+	directories it check if there is a local runtime configuration file,
+	including this top level directory (see |g:localrc_file_name_list|).
+
+
+|g:localrc_file_name_list|	  list (default `['.vimrc', '.nvimrc' '.exrc']`)
+
+	A list of file names which are considered to be local runtime
+	configuration files. These are used to search for such files to load,
+	but also for automatic confirmations (see
+	|g:localrc_confirm_automatically|). The default list is compatible to
+	the |exrc| option.
+
+
+|g:localrc_hash_command|			    string (default `sha1sum`)
+
+	A Shell command that gets executed to calculate the hash value of
+	a local runtime configuration file. This command must be available by
+	the operation system. Please make sure that it is available by the set
+	`$PATH`. The absolute path of the file to hash gets appended to the
+	end of this command before execution.
+
+
+|g:localrc_hash_command_word_index|			  number (default `0`)
+
+	In case that the |g:localrc_hash_command| output does not consist of
+	the hash value only, this number specifies the word index of the
+	output that should be interpreted as the hash value. As example does
+	the default command `sha1sum` return the hash value followed by the
+	files path. Therefore the default word index is `0`. The term of word
+	does refer to the Bash terminology.
+
+
+|g:localrc_cache_file|	 string (default `$XDG_CACHE_HOME/vim-localrc/hashes`)
+
+	File path where to store the cache of confirmed files and their
+	related hash values. All non-existing parent directories to this file
+	get created automatically. The default value refers to the
+	`$XDG_CACHE_HOME` environment variable. In case such is not defined,
+	it falls back to `$HOME/.cache` (plus the remaining path).
+
+
+==============================================================================
+							   *localrc_todo_list*
+TODO-List~
+
+    - proper error handling (or at least throw any error)
+    - specify maximum count of to apply files from the closest to the most far
+    - add command for current working directory (maybe also auto-command)
+    - add command to clear cache to speed up/
+    - add option to keep minimal cache (one hash per file only)
+    - allow to temporally ignore a file (path) for the whole session without
+      being asked again and again
+    - checkout if first the buffer can be displayed before the auto-command
+      ask the user for confirmations
+    - add option for the user to view the to source file before confirmation
+      (complicated how to solve the flow interruption of multiple files)
+
+
+==============================================================================
+
+vim:tw=78:ts=8:noet:ft=help:norl:
