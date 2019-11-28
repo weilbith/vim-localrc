@@ -1,4 +1,5 @@
 let s:cache_file_separator = ':'
+let s:error_prefix = 'Localrc - Error: '
 
 
 function! localrc#find_configuration_files(base_path) abort
@@ -9,9 +10,7 @@ function! localrc#find_configuration_files(base_path) abort
     if isdirectory(a:base_path)
       let l:directory = a:base_path
     else
-      " TODO: Make it a proper error
-      echom 'error determine base path to find configuration files'
-      return
+      throw s:error_prefix . 'Can not find configuration files for base: ' . a:base_path
     endif
   endif
 
@@ -40,9 +39,7 @@ function! localrc#calculate_file_hash(file) abort
   let l:file_absolute_path = fnamemodify(a:file, ':p')
 
   if !filereadable(l:file_absolute_path)
-    " TODO: Make it a proper error
-    echom 'Error: Can not calculate hash of not existing file'
-    return
+    throw s:error_prefix . 'Can not calculate hash of non-existing file: ' . a:file
   endif
 
   let l:hash_command = get(g:, 'localrc_hash_command', 'sha1sum') . ' ' . l:file_absolute_path
@@ -106,9 +103,7 @@ endfunction
 
 function! localrc#source_rc_file(file) abort
   if !filereadable(a:file)
-    " TODO: Throw actual error
-    echom 'Error: Can not import not existing configuration file "' . a:file .'"'
-    return
+    throw s:error_prefix . 'Can not import non-existing configuration file: ' . a:file
   endif
 
   let l:file_absolute_path = fnamemodify(a:file, ':p')

@@ -218,7 +218,6 @@ VARIABLES~
 							   *localrc_todo_list*
 TODO-List~
 
-    - proper error handling (or at least throw any error)
     - specify maximum count of to apply files from the closest to the most far
     - add command for current working directory (maybe also auto-command)
     - add command to clear cache to speed up/
