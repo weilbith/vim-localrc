@@ -3,6 +3,8 @@ let s:error_prefix = 'Localrc - Error: '
 
 
 function! localrc#find_configuration_files(base_path) abort
+  let l:rc_file_list = []
+
   " Determine if the base is a file or a directory
   if filereadable(a:base_path)
     let l:directory = fnamemodify(a:base_path, ':h')
@@ -10,11 +12,10 @@ function! localrc#find_configuration_files(base_path) abort
     if isdirectory(a:base_path)
       let l:directory = a:base_path
     else
-      throw s:error_prefix . 'Can not find configuration files for base: ' . a:base_path
+      return l:rc_file_list
     endif
   endif
 
-  let l:rc_file_list = []
 
   " Traverse directories upwards until reach configured top.
   " Watch-out for local configurations files on each step.
